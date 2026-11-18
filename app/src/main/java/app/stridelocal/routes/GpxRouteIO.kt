@@ -52,5 +52,5 @@ object GpxRouteIO {
         return ImportedGpxRoute(name, points, distance)
     }
 
-    private const val MAX_POINTS = 1_000_000
+    private const val MAX_POINTS = 100_000
 }

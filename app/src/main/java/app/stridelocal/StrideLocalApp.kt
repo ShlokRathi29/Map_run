@@ -14,12 +14,12 @@ class StrideLocalApp : Application() {
     override fun onCreate() {
         super.onCreate()
         MapLibre.getInstance(this)
-        MapLibre.getInstance(this).setConnected(false)
+        MapLibre.setConnected(false)
         OfflineMapPacks.pauseAll(this)
         val requestDispatcher = Dispatcher().apply { maxRequests = 4; maxRequestsPerHost = 4 }
         val mapClient = OkHttpClient.Builder().dispatcher(requestDispatcher).addInterceptor { chain ->
             chain.proceed(chain.request().newBuilder().header("User-Agent", "StrideLocal/0.1 Android").build())
         }.build()
-        HttpRequestUtil().setOkHttpClient(mapClient)
+        HttpRequestUtil.setOkHttpClient(mapClient)
     }
 }

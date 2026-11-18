@@ -11,7 +11,7 @@ import kotlin.math.*
 data class OfflineMapPack(val id: Long, val name: String, val downloadedBytes: Long, val complete: Boolean)
 
 object OfflineMapPacks {
-    const val RADIUS_KM = 100.0
+    const val HALF_EXTENT_KM = 100.0
     const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
     private const val TILE_LIMIT = 3_000L
     private const val TARGET_TILE_BUDGET = 2_000L
@@ -27,8 +27,8 @@ object OfflineMapPacks {
     ) {
         require(latitude.isFinite() && latitude in -85.0..85.0)
         require(longitude.isFinite() && longitude in -180.0..180.0)
-        val latDelta = RADIUS_KM / 111.32
-        val lonDelta = min(180.0, RADIUS_KM / (111.32 * cos(Math.toRadians(latitude)).coerceAtLeast(0.01)))
+        val latDelta = HALF_EXTENT_KM / 111.32
+        val lonDelta = min(180.0, HALF_EXTENT_KM / (111.32 * cos(Math.toRadians(latitude)).coerceAtLeast(0.01)))
         val south = (latitude - latDelta).coerceAtLeast(-85.0)
         val north = (latitude + latDelta).coerceAtMost(85.0)
         val west = (longitude - lonDelta).coerceAtLeast(-180.0)
@@ -38,9 +38,9 @@ object OfflineMapPacks {
         val definition = OfflineTilePyramidRegionDefinition(STYLE_URL, bounds, 5.0, maxZoom.toDouble(), 1.0f)
         val manager = OfflineManager.getInstance(context.applicationContext)
         manager.setOfflineMapboxTileCountLimit(TILE_LIMIT)
-        val metadata = JSONObject().put("name", "100 km around ${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}")
+        val metadata = JSONObject().put("name", "About 100 km around ${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}")
             .put("provider", "OpenFreeMap").put("createdAt", System.currentTimeMillis()).toString().toByteArray()
-        MapLibre.getInstance(context).setConnected(true)
+        MapLibre.setConnected(true)
         manager.createOfflineRegion(definition, metadata, object : OfflineManager.CreateOfflineRegionCallback {
             override fun onCreate(region: OfflineRegion) {
                 var complete = false
@@ -56,14 +56,14 @@ object OfflineMapPacks {
                                     override fun onDelete() = Unit
                                     override fun onError(error: String) = Unit
                                 })
-                                MapLibre.getInstance(context).setConnected(false)
+                                MapLibre.setConnected(false)
                                 onComplete(false, "Map download exceeded the 50 MB provider limit and was removed.")
                                 return
                             }
                             complete = true
                             region.setDownloadState(OfflineRegion.STATE_INACTIVE)
                             onStatus("Map saved offline (${"%.1f".format(sizeMb)} MB)")
-                            MapLibre.getInstance(context).setConnected(false)
+                            MapLibre.setConnected(false)
                             onComplete(true, "Map saved for offline use.")
                         } else {
                             onStatus("Downloading map: ${status.completedTileCount} tiles, ${"%.1f".format(sizeMb)} MB")
@@ -74,7 +74,7 @@ object OfflineMapPacks {
                                     override fun onDelete() = Unit
                                     override fun onError(error: String) = Unit
                                 })
-                                MapLibre.getInstance(context).setConnected(false)
+                                MapLibre.setConnected(false)
                                 onComplete(false, "Download stopped near the provider's 50 MB limit. Try a smaller map area.")
                             }
                         }
@@ -88,7 +88,7 @@ object OfflineMapPacks {
                             override fun onDelete() = Unit
                             override fun onError(error: String) = Unit
                         })
-                        MapLibre.getInstance(context).setConnected(false)
+                        MapLibre.setConnected(false)
                         onStatus("Map download error: $error")
                         onComplete(false, error.toString())
                     }
@@ -101,7 +101,7 @@ object OfflineMapPacks {
                             override fun onDelete() = Unit
                             override fun onError(error: String) = Unit
                         })
-                        MapLibre.getInstance(context).setConnected(false)
+                        MapLibre.setConnected(false)
                         onComplete(false, "The map exceeded the provider's $limit tile limit. Try a smaller area.")
                     }
                 })
@@ -110,7 +110,7 @@ object OfflineMapPacks {
             }
 
             override fun onError(error: String) {
-                MapLibre.getInstance(context).setConnected(false)
+                MapLibre.setConnected(false)
                 onComplete(false, error)
             }
         })
@@ -118,20 +118,26 @@ object OfflineMapPacks {
 
     fun list(context: Context, onResult: (List<OfflineMapPack>) -> Unit) {
         OfflineManager.getInstance(context.applicationContext).listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
-            override fun onList(regions: Array<OfflineRegion>) {
-                if (regions.isEmpty()) { onResult(emptyList()); return }
+            override fun onList(regions: Array<OfflineRegion>?) {
+                if (regions.isNullOrEmpty()) { onResult(emptyList()); return }
                 val packs = mutableListOf<OfflineMapPack>()
                 var remaining = regions.size
                 regions.forEach { region ->
                     var name = "Offline map ${region.id}"
                     try { name = JSONObject(String(region.metadata)).optString("name", name) } catch (_: Exception) { }
                     region.getStatus(object : OfflineRegion.OfflineRegionStatusCallback {
-                        override fun onStatus(status: OfflineRegionStatus) {
+                        override fun onStatus(status: OfflineRegionStatus?) {
+                            if (status == null) {
+                                packs += OfflineMapPack(region.id, name, 0L, false)
+                                remaining--
+                                if (remaining == 0) onResult(packs.toList())
+                                return
+                            }
                             packs += OfflineMapPack(region.id, name, status.completedResourceSize.coerceAtLeast(0L), status.isComplete)
                             remaining--
                             if (remaining == 0) onResult(packs.toList())
                         }
-                        override fun onError(error: String) {
+                        override fun onError(error: String?) {
                             packs += OfflineMapPack(region.id, name, 0L, false)
                             remaining--
                             if (remaining == 0) onResult(packs.toList())
@@ -158,9 +164,11 @@ object OfflineMapPacks {
     }
 
     fun pauseAll(context: Context) {
-        MapLibre.getInstance(context).setConnected(false)
+        MapLibre.setConnected(false)
         OfflineManager.getInstance(context).listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
-            override fun onList(regions: Array<OfflineRegion>) = regions.forEach { it.setDownloadState(OfflineRegion.STATE_INACTIVE) }
+            override fun onList(regions: Array<OfflineRegion>?) {
+                regions?.forEach { it.setDownloadState(OfflineRegion.STATE_INACTIVE) }
+            }
             override fun onError(error: String) = Unit
         })
     }

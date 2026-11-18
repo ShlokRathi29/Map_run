@@ -49,7 +49,7 @@ import app.stridelocal.maps.MapPoint
 import app.stridelocal.sensors.BluetoothHeartRateScanner
 import app.stridelocal.sensors.HeartRateSensor
 import app.stridelocal.sensors.HealthConnectHeartRate
-import androidx.health.connect.client.permission.PermissionController
+import androidx.health.connect.client.PermissionController
 import app.stridelocal.tracking.RunTrackingService
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Dispatchers
@@ -419,7 +419,7 @@ private fun StrideLocalScreen(database: app.stridelocal.data.local.StrideDatabas
                 Text("Offline maps", style = MaterialTheme.typography.titleLarge)
                 Text("Run tracking never loads map tiles. Download a map pack only when you choose to.", style = MaterialTheme.typography.bodySmall)
                 Button(onClick = { showMapConsent = true }, enabled = !tracking && !mapDownloadRunning) {
-                    Text(if (mapDownloadRunning) "Map download in progress" else "Download 100 km map around me")
+                    Text(if (mapDownloadRunning) "Map download in progress" else "Download offline map around me")
                 }
                 Text(mapDownloadStatus, style = MaterialTheme.typography.bodySmall)
             }
@@ -435,7 +435,7 @@ private fun StrideLocalScreen(database: app.stridelocal.data.local.StrideDatabas
                 }
             }
             item {
-                Text("Still planned: turn-by-turn route guidance, personal-record summaries, elevation charts, richer goal types, and interrupted-run recovery.", style = MaterialTheme.typography.bodySmall)
+                Text("Still planned: turn-by-turn route guidance, elevation charts, training calendar, more goal types, and interrupted-run recovery.", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -459,7 +459,7 @@ private fun StrideLocalScreen(database: app.stridelocal.data.local.StrideDatabas
         AlertDialog(
             onDismissRequest = { showMapConsent = false },
             title = { Text("Download an offline map?") },
-            text = { Text("Stride Local will contact OpenFreeMap directly to download a map around your current GPS location. The provider will receive the requested area and your network address. Your runs are not sent. The map is stored on this phone; run tracking makes no map requests. The download is limited to the provider's 3,000-tile or 50 MB cap, so map detail may be reduced.") },
+            text = { Text("Stride Local will contact OpenFreeMap directly to download an offline map centered on your current GPS location. Its rectangular bounds extend about 100 km north, south, east, and west; the corners extend farther. The provider will receive the requested area and your network address. Your runs are not sent. The map is stored on this phone; run tracking makes no map requests. The download is limited to the provider's 3,000-tile or 50 MB cap, so map detail may be reduced.") },
             confirmButton = {
                 TextButton(onClick = {
                     showMapConsent = false
@@ -566,8 +566,8 @@ private fun PaceChart(splits: List<app.stridelocal.analysis.PaceSplit>, modifier
         val span = (high - low).takeIf { it > 0 } ?: 1.0
         val path = Path()
         values.forEachIndexed { index, pace ->
-            val x = if (values.size == 1) size.width / 2 else index * size.width / (values.size - 1)
-            val y = (pace - low) / span * (size.height - 12.dp.toPx()) + 6.dp.toPx()
+            val x = if (values.size == 1) size.width / 2f else index.toFloat() * size.width / (values.size - 1)
+            val y = ((pace - low) / span).toFloat() * (size.height - 12.dp.toPx()) + 6.dp.toPx()
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
         drawPath(path, color = Color(0xFF177D68), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx()))
@@ -580,13 +580,13 @@ private fun RouteTrace(points: List<TrackPointEntity>, modifier: Modifier = Modi
         if (points.size < 2) return@Canvas
         val minLat = points.minOf { it.latitude }; val maxLat = points.maxOf { it.latitude }
         val minLon = points.minOf { it.longitude }; val maxLon = points.maxOf { it.longitude }
-        val latSpan = (maxLat - minLat).takeIf { it > 0 } ?: 1e-6
-        val lonSpan = (maxLon - minLon).takeIf { it > 0 } ?: 1e-6
+        val latSpan = (maxLat - minLat).toFloat().takeIf { it > 0f } ?: 1e-6f
+        val lonSpan = (maxLon - minLon).toFloat().takeIf { it > 0f } ?: 1e-6f
         val scale = minOf((size.width - 24.dp.toPx()) / lonSpan, (size.height - 24.dp.toPx()) / latSpan)
         val path = Path()
         points.forEachIndexed { index, point ->
-            val x = 12.dp.toPx() + (point.longitude - minLon) * scale
-            val y = size.height - 12.dp.toPx() - (point.latitude - minLat) * scale
+            val x = 12.dp.toPx() + (point.longitude - minLon).toFloat() * scale
+            val y = size.height - 12.dp.toPx() - (point.latitude - minLat).toFloat() * scale
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
         drawPath(path, color = Color(0xFF177D68), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.dp.toPx()))

@@ -29,7 +29,7 @@ data class MapPoint(val latitude: Double, val longitude: Double, val key: String
 fun OfflineRouteMap(points: List<MapPoint>, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val mapView = remember {
-        MapLibre.getInstance(context).setConnected(false)
+        MapLibre.setConnected(false)
         MapView(context).apply { onCreate(Bundle()) }
     }
     var configuredRoute by remember(mapView) { mutableStateOf("") }
@@ -47,7 +47,7 @@ fun OfflineRouteMap(points: List<MapPoint>, modifier: Modifier = Modifier) {
         val signature = "${points.size}:${points.first().key}:${points.last().key}"
         if (configuredRoute == signature) return@AndroidView
         configuredRoute = signature
-        MapLibre.getInstance(context).setConnected(false)
+        MapLibre.setConnected(false)
         mapView.getMapAsync { map ->
             val route = LineString.fromLngLats(points.map { Point.fromLngLat(it.longitude, it.latitude) })
             val features = FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(route)))

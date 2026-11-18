@@ -243,7 +243,7 @@ class RunTrackingService : Service(), LocationListener {
         .setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentTitle("Stride Local").setContentText(text)
         .setOngoing(true).setCategory(NotificationCompat.CATEGORY_SERVICE).build()
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= 26) (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
             .createNotificationChannel(NotificationChannel(CHANNEL_ID, "Run tracking", NotificationManager.IMPORTANCE_LOW))
     }
 

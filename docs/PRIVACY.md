@@ -22,4 +22,4 @@ Map downloading uses OpenFreeMap and follows its published offline tile, size, c
 
 ## Known security limit
 
-Local app storage is protected by Android's application sandbox, but the Room database is not encrypted at rest yet. This project has not been security-audited and has not been built or tested on a device. Do not describe it as leak-proof or production-ready until storage, permissions, network behavior, and interrupted-run recovery have been reviewed on Android hardware.
+Local app storage is protected by Android's application sandbox, but the Room database is not encrypted at rest yet. The debug app builds and passes Android Lint, but it has not been security-audited or tested on a device. Do not describe it as leak-proof or production-ready until storage, permissions, network behavior, and interrupted-run recovery have been reviewed on Android hardware.

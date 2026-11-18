@@ -25,6 +25,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.10.00")
     implementation(composeBom)
@@ -43,4 +47,5 @@ dependencies {
     implementation("org.maplibre.gl:android-sdk:13.5.4")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.health.connect:connect-client:1.1.0")
+    testImplementation("junit:junit:4.13.2")
 }

@@ -1,4 +1,5 @@
 .gradle/
+.kotlin/
 **/build/
 local.properties
 .idea/
@@ -8,3 +9,5 @@ captures/
 .cxx/
 *.jks
 *.keystore
+.DS_Store
+Thumbs.db
